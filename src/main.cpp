@@ -46,12 +46,12 @@ SOFTWARE.
 **===========================================================================
 */
 
-void initLED() {
+void initLED(void) {
 
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,ENABLE);
 
 	GPIO_InitTypeDef initStruct;
-	initStruct.GPIO_Pin = GPIO_Pin_12;
+	initStruct.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13;
 	initStruct.GPIO_Mode = GPIO_Mode_OUT;
 	initStruct.GPIO_OType = GPIO_OType_PP;
 	initStruct.GPIO_PuPd = GPIO_PuPd_UP;
@@ -61,14 +61,14 @@ void initLED() {
 	return;
 }
 
-void initTIMER() {
+void initTIMER(void) {
 
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
 
 	TIM_TimeBaseInitTypeDef timerInitStructure;
 	timerInitStructure.TIM_Prescaler = 27000-1;
 	timerInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	timerInitStructure.TIM_Period = 30000-1;
+	timerInitStructure.TIM_Period = 1000-1;
 	timerInitStructure.TIM_ClockDivision = 0;
 	timerInitStructure.TIM_RepetitionCounter = 0;
 	TIM_TimeBaseInit(TIM2, &timerInitStructure);
@@ -78,20 +78,39 @@ void initTIMER() {
 	return;
 }
 
+void EnableTimerInterrupt(void) {
+
+    NVIC_InitTypeDef nvicStructure;
+    nvicStructure.NVIC_IRQChannel = TIM2_IRQn;
+    nvicStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    nvicStructure.NVIC_IRQChannelSubPriority = 1;
+    nvicStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&nvicStructure);
+
+    return;
+}
+
+extern "C" void TIM2_IRQHandler(void) {
+
+	if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET) {
+
+		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+		GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
+
+	}
+
+	return;
+
+}
+
 int main(void) {
 
 	initLED();
 	initTIMER();
+	EnableTimerInterrupt();
 
 	while (1) {
 
-		// manualne sledovanie, nenastaveny interrupt
-		if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET) {
-
-			TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
-		    GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
-
-		}
-
 	}
+
 }
