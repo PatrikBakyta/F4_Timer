@@ -28,6 +28,10 @@ SOFTWARE.
 
 /* Includes */
 #include "stm32f4xx.h"
+#include <stm32f4xx_gpio.h>
+#include <stm32f4xx_tim.h>
+#include <stm32f4xx_rcc.h>
+#include <misc.h>
 
 /* Private macro */
 /* Private variables */
@@ -41,25 +45,53 @@ SOFTWARE.
 **
 **===========================================================================
 */
-int main(void)
-{
-  int i = 0;
 
-  /**
-  *  IMPORTANT NOTE!
-  *  The symbol VECT_TAB_SRAM needs to be defined when building the project
-  *  if code has been located to RAM and interrupts are used. 
-  *  Otherwise the interrupt table located in flash will be used.
-  *  See also the <system_*.c> file and how the SystemInit() function updates 
-  *  SCB->VTOR register.  
-  *  E.g.  SCB->VTOR = 0x20000000;  
-  */
+void initLED() {
 
-  /* TODO - Add your application code here */
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,ENABLE);
 
-  /* Infinite loop */
-  while (1)
-  {
-	i++;
-  }
+	GPIO_InitTypeDef initStruct;
+	initStruct.GPIO_Pin = GPIO_Pin_12;
+	initStruct.GPIO_Mode = GPIO_Mode_OUT;
+	initStruct.GPIO_OType = GPIO_OType_PP;
+	initStruct.GPIO_PuPd = GPIO_PuPd_UP;
+	initStruct.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOD,&initStruct);
+
+	return;
+}
+
+void initTIMER() {
+
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+
+	TIM_TimeBaseInitTypeDef timerInitStructure;
+	timerInitStructure.TIM_Prescaler = 27000-1;
+	timerInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	timerInitStructure.TIM_Period = 30000-1;
+	timerInitStructure.TIM_ClockDivision = 0;
+	timerInitStructure.TIM_RepetitionCounter = 0;
+	TIM_TimeBaseInit(TIM2, &timerInitStructure);
+	TIM_Cmd(TIM2, ENABLE);
+	TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE); // povolenie update eventu
+
+	return;
+}
+
+int main(void) {
+
+	initLED();
+	initTIMER();
+
+	while (1) {
+
+		// manualne sledovanie, nenastaveny interrupt
+		if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET) {
+
+			TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+		    GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
+
+		}
+
+	}
 }
